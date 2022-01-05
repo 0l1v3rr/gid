@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -24,6 +25,8 @@ func main() {
 		return
 	}
 
+	os.Mkdir("img", 0755)
+
 	for i := 0; i < len(res)-4; i++ {
 		if res[i] == 's' && res[i+1] == 'r' && res[i+2] == 'c' && res[i+3] == '=' && res[i+4] == '"' {
 			img := ""
@@ -35,11 +38,14 @@ func main() {
 				}
 			}
 			if strings.HasSuffix(img, "png") || strings.HasSuffix(img, "jpeg") || strings.HasSuffix(img, "jpg") || strings.HasSuffix(img, "svg") || strings.HasSuffix(img, "ico") {
-				fmt.Println(img)
+				newurl := "http://" + strings.Split(strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(url, "https://", ""), "http://", ""), "www.", ""), "/")[0] + "/" + img
+				downloadImg(newurl, fmt.Sprintf("img/%v", strings.Split(img, "/")[len(strings.Split(img, "/"))-1]))
 			}
 			img = ""
 		}
 	}
+	fmt.Println()
+	message(":)", "The images have been successfully downloaded to the img/ folder.")
 }
 
 func getResponse(link string) string {
@@ -55,6 +61,33 @@ func getResponse(link string) string {
 		return ""
 	}
 	return string(content)
+}
+
+func downloadImg(link, fileName string) {
+	response, err := http.Get(link)
+	if err != nil {
+		errorMsg("An unknown error occurred.")
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		errorMsg("Received a non 200 status code.")
+		return
+	}
+
+	file, err := os.Create(fileName)
+	if err != nil {
+		errorMsg("An unknown error occurred while creating the file.")
+		return
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		errorMsg("An unknown error occurred while copying the file.")
+		return
+	}
 }
 
 func message(prefix string, m string) {
